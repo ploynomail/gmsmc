@@ -40,9 +40,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tjfoc/gmsm/sm2"
+	"github.com/ploynomail/gmsmc/sm2"
 
-	"github.com/tjfoc/gmsm/sm3"
+	"github.com/ploynomail/gmsmc/sm3"
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
 )

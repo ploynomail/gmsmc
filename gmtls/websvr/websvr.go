@@ -1,15 +1,16 @@
 package websvr
+
 import (
-	"github.com/tjfoc/gmsm/gmtls"
-	"github.com/tjfoc/gmsm/x509"
-	"io/ioutil"
 	"crypto/tls"
 	x "crypto/x509"
+	"github.com/ploynomail/gmsmc/gmtls"
+	"github.com/ploynomail/gmsmc/x509"
+	"io/ioutil"
 )
 
 const (
-	rsaCertPath = "./certs/rsa_sign.cer"
-	rsaKeyPath  = "./certs/rsa_sign_key.pem"
+	rsaCertPath     = "./certs/rsa_sign.cer"
+	rsaKeyPath      = "./certs/rsa_sign_key.pem"
 	RSACaCertPath   = "./certs/RSA_CA.cer"
 	RSAAuthCertPath = "./certs/rsa_auth_cert.cer"
 	RSAAuthKeyPath  = "./certs/rsa_auth_key.pem"
@@ -113,6 +114,7 @@ func singleSideAuthConfig() (*gmtls.Config, error) {
 		RootCAs:   certPool,
 	}, nil
 }
+
 // 获取 客户端服务端双向身份认证 配置
 func rsaBothAuthConfig() (*tls.Config, error) {
 	// 信任的根证书
