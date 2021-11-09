@@ -1,10 +1,11 @@
-module github.com/tjfoc/gmsm
+module github.com/ploynomail/gmsmc
 
-go 1.14
+go 1.16
 
 require (
-	github.com/golang/protobuf v1.4.2
-	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee
-	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb
-	google.golang.org/grpc v1.31.0
+	github.com/golang/protobuf v1.5.2
+	github.com/tjfoc/gmsm v1.4.1
+	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa
+	golang.org/x/net v0.0.0-20211108170745-6635138e15ea
+	google.golang.org/grpc v1.42.0
 )
