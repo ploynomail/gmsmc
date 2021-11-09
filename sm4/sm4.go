@@ -367,7 +367,7 @@ func Sm4Ecb(key []byte, in []byte, mode bool) (out []byte, err error) {
 			c.Decrypt(out_tmp, in_tmp)
 			copy(out[i*16:i*16+16], out_tmp)
 		}
-		out, _ = pkcs7UnPadding(out)
+		// out, _ = pkcs7UnPadding(out)
 	}
 
 	return out, nil
