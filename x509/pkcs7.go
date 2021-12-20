@@ -15,6 +15,7 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
+	"github.com/ploynomail/gmsmc/sm4"
 	"math/big"
 	"sort"
 	"time"
@@ -47,6 +48,8 @@ var (
 	oidData                   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 1}
 	oidSignedData             = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 2}
 	oidSMSignedData           = asn1.ObjectIdentifier{1, 2, 156, 10197, 6, 1, 4, 2, 2}
+	oidGMEnvelopedData        = asn1.ObjectIdentifier{1, 2, 156, 10197, 6, 1, 4, 2, 3}
+	oidSM2Encrypted           = asn1.ObjectIdentifier{1, 2, 156, 10197, 6, 1, 4, 2, 5}
 	oidEnvelopedData          = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 3}
 	oidSignedAndEnvelopedData = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 4}
 	oidDigestedData           = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 5}
@@ -56,6 +59,7 @@ var (
 	oidAttributeSigningTime   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 5}
 	oidSM3withSM2             = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 501}
 	oidDSASM2                 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 301, 1}
+	oidDSESM4                 = asn1.ObjectIdentifier{1, 2, 156, 10197, 1, 104}
 )
 
 type signedData struct {
@@ -801,14 +805,15 @@ func DegenerateCertificate(cert []byte) ([]byte, error) {
 }
 
 const (
-	EncryptionAlgorithmDESCBC = iota
+	EncryptionAlgorithmSM4ECB = iota
+	EncryptionAlgorithmDESCBC
 	EncryptionAlgorithmAES128GCM
 )
 
 // ContentEncryptionAlgorithm determines the algorithm used to encrypt the
 // plaintext message. Change the value of this variable to change which
 // algorithm is used in the Encrypt() function.
-var ContentEncryptionAlgorithm = EncryptionAlgorithmDESCBC
+var ContentEncryptionAlgorithm = EncryptionAlgorithmSM4ECB
 
 // ErrUnsupportedEncryptionAlgorithm is returned when attempting to encrypt
 // content with an unsupported algorithm.
@@ -911,6 +916,27 @@ func encryptDESCBC(content []byte) ([]byte, *encryptedContentInfo, error) {
 	return key, &eci, nil
 }
 
+func encryptGMSM4ECB(content []byte) ([]byte, *encryptedContentInfo, error) {
+	// Create SM4 key
+	key := make([]byte, 16)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	//sm4加密
+	out, err := sm4.Sm4Ecb(key, content, true)
+	//打包组成加密数据块
+	eci := encryptedContentInfo{
+		ContentType: oidDSESM4,
+		ContentEncryptionAlgorithm: pkix.AlgorithmIdentifier{
+			Algorithm:  oidDSESM4,
+			Parameters: asn1.RawValue{},
+		},
+		EncryptedContent: marshalEncryptedContent(out),
+	}
+	return key, &eci, nil
+}
+
 // Encrypt creates and returns an envelope data PKCS7 structure with encrypted
 // recipient keys for each recipient public key.
 //
@@ -1010,6 +1036,8 @@ func PKCS7EncryptSM2(content []byte, recipients []*Certificate, mode int) ([]byt
 	case EncryptionAlgorithmAES128GCM:
 		key, eci, err = encryptAES128GCM(content)
 
+	case EncryptionAlgorithmSM4ECB:
+		key, eci, err = encryptGMSM4ECB(content)
 	default:
 		return nil, ErrUnsupportedEncryptionAlgorithm
 	}
@@ -1033,7 +1061,7 @@ func PKCS7EncryptSM2(content []byte, recipients []*Certificate, mode int) ([]byt
 			Version:               0,
 			IssuerAndSerialNumber: ias,
 			KeyEncryptionAlgorithm: pkix.AlgorithmIdentifier{
-				Algorithm: oidSM3withSM2,
+				Algorithm: oidSM2Encrypted,
 			},
 			EncryptedKey: encrypted,
 		}
@@ -1042,8 +1070,8 @@ func PKCS7EncryptSM2(content []byte, recipients []*Certificate, mode int) ([]byt
 
 	// Prepare envelope content
 	envelope := envelopedData{
-		EncryptedContentInfo: *eci,
 		Version:              0,
+		EncryptedContentInfo: *eci,
 		RecipientInfos:       recipientInfos,
 	}
 	innerContent, err := asn1.Marshal(envelope)
@@ -1053,7 +1081,7 @@ func PKCS7EncryptSM2(content []byte, recipients []*Certificate, mode int) ([]byt
 
 	// Prepare outer payload structure
 	wrapper := contentInfo{
-		ContentType: oidEnvelopedData,
+		ContentType: oidGMEnvelopedData,
 		Content:     asn1.RawValue{Class: 2, Tag: 0, IsCompound: true, Bytes: innerContent},
 	}
 
